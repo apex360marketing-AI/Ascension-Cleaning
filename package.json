@@ -1,0 +1,12 @@
+{
+  "name": "ascension-cleaning",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "prelaunch": "node scripts/prelaunch.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
