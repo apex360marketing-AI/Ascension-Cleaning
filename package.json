@@ -4,9 +4,20 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
-    "prelaunch": "node scripts/prelaunch.mjs"
+    "prelaunch": "node scripts/prelaunch.mjs",
+    "build:dashboard": "esbuild src/dashboard-auth.js --bundle --minify --format=iife --target=es2020 --outfile=public/dashboard/auth.js"
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "@netlify/database": "^2.0.1",
+    "@netlify/identity": "^2.0.0",
+    "drizzle-orm": "^1.0.0-beta.22"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^6.0.2",
+    "drizzle-kit": "^1.0.0-beta.22",
+    "esbuild": "^0.25.12"
   }
 }
