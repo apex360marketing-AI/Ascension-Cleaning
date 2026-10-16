@@ -29,11 +29,20 @@ or call.
 ## Deploy (replaces ascensioncleaningco.netlify.app)
 
 ```
+npm test                                   # the gate: deploy only on green
 npx netlify-cli login
-npx netlify-cli link        # choose the existing ascensioncleaningco site
+npx netlify-cli link --id 1164a89a-18f8-44b4-97db-34bf771f236d   # ascensioncleaningco
 npx netlify-cli env:set GHL_WEBHOOK_URL "https://services.leadconnectorhq.com/hooks/..."
-npx netlify-cli deploy --prod
+npx netlify-cli deploy --no-build          # draft → check it with scripts/smoke.mjs
+npx netlify-cli deploy --no-build --prod   # live
+node scripts/smoke.mjs https://ascensioncleaningco.netlify.app --send-test-lead
 ```
+
+`--no-build` is needed because the site's dashboard settings still carry the
+old Next.js app's build command and plugins. That site is also connected to the
+GitHub repo `cleaning-ascension-3060e8`: a push there redeploys the old app over
+this one. Either push this project to that repo, or unlink the repo in Netlify
+(Project configuration → Build & deploy → Continuous deployment).
 
 Then point Kayla's domain at the site in Netlify → Domain management.
 
