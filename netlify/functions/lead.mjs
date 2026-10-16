@@ -1,7 +1,11 @@
-// POST /.netlify/functions/lead — validates a website form and forwards it to
-// Kayla's GoHighLevel inbound webhook. The webhook URL lives only in the
-// Netlify env var GHL_WEBHOOK_URL, never in the page.
+// POST /.netlify/functions/lead — validates a website form, saves it for
+// Kayla's dashboard (/dashboard/) and forwards it to her GoHighLevel inbound
+// webhook. The webhook URL lives only in the Netlify env var GHL_WEBHOOK_URL,
+// never in the page.
+import { eq } from 'drizzle-orm'
 import { buildLead } from '../lib/lead.mjs'
+import { db } from '../../db/index.ts'
+import { leads } from '../../db/schema.ts'
 
 const MAX_BODY = 20_000
 
@@ -31,25 +35,50 @@ export default async (req) => {
   if (!r.ok) return json(r.status, { error: r.error })
   if (r.spam) return json(200, { ok: true }) // tell bots nothing
 
+  // Saved first, so a GHL outage never loses a lead. A database hiccup must not
+  // lose it either, so GHL still gets it if the save fails.
+  const l = r.lead
+  let id = null
+  try {
+    const [row] = await db
+      .insert(leads)
+      .values({ kind: l.kind, name: l.name, email: l.email, phone: l.phone, fields: l.fields, extra: l.extra, page: l.page })
+      .returning({ id: leads.id })
+    id = row.id
+  } catch (e) {
+    console.error('lead: not saved to the database', e instanceof Error ? e.message : e, l.kind)
+  }
+
+  const delivered = await forward(l)
+  if (id !== null && delivered !== null) {
+    await db.update(leads).set({ ghlDelivered: delivered }).where(eq(leads.id, id)).catch(() => {})
+  }
+  // The visitor hears "sent" if Kayla can see the lead anywhere.
+  if (id !== null || delivered) return json(200, { ok: true })
+  return json(delivered === null ? 503 : 502, { error: delivered === null ? 'not configured' : 'delivery failed' })
+}
+
+// true = GHL accepted it, false = GHL refused or was unreachable, null = no webhook set
+async function forward(lead) {
   const hook = process.env.GHL_WEBHOOK_URL
   if (!hook) {
-    console.error('lead: GHL_WEBHOOK_URL is not set — lead not delivered', r.lead.kind)
-    return json(503, { error: 'not configured' })
+    console.error('lead: GHL_WEBHOOK_URL is not set — lead not sent to GHL', lead.kind)
+    return null
   }
   try {
     const res = await fetch(hook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(r.lead),
+      body: JSON.stringify(lead),
       signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) {
-      console.error('lead: GHL answered', res.status, r.lead.kind)
-      return json(502, { error: 'delivery failed' })
+      console.error('lead: GHL answered', res.status, lead.kind)
+      return false
     }
+    return true
   } catch (e) {
-    console.error('lead: GHL unreachable', e instanceof Error ? e.message : e, r.lead.kind)
-    return json(502, { error: 'delivery failed' })
+    console.error('lead: GHL unreachable', e instanceof Error ? e.message : e, lead.kind)
+    return false
   }
-  return json(200, { ok: true })
 }

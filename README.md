@@ -17,8 +17,23 @@ device; the lead carries `photo_count`, so have the workflow text them asking
 for the photos. Gift cards are requests: no payment is taken on the site, and
 Kayla sends a payment link.
 
-If delivery fails, the visitor gets their form back and a message to try again
-or call.
+Every lead is also saved to Netlify Database first, so nothing is lost if GHL
+is down. The visitor only gets their form back, with a message to try again or
+call, if the lead could be neither saved nor delivered.
+
+## Lead dashboard (`/dashboard/`)
+
+Kayla's private Lead Desk: an overview (new leads waiting, this week, bookings,
+win rate, leads per week, which forms bring them in), a filterable and searchable
+lead list, and a detail panel for each lead with call/text/email buttons, a stage
+(New → Contacted → Quoted → Booked / Closed) and notes.
+
+Access goes through Netlify Identity. To set it up once:
+
+1. Netlify → **Project configuration → Identity**: set registration to **Invite only**.
+2. **Identity → Invite users**: invite Kayla. The email link lets her choose a password.
+3. Once she's accepted, click her name and add the role **`admin`**. Without it she
+   sees a "no access yet" screen.
 
 ## Set up GHL (once)
 
